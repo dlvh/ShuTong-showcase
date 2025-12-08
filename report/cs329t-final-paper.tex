@@ -1,0 +1,251 @@
+% This must be in the first 5 lines to tell arXiv to use pdfLaTeX, which is strongly recommended.
+\pdfoutput=1
+% In particular, the hyperref package requires pdfLaTeX in order to break URLs across lines.
+
+\documentclass[11pt]{article}
+
+% Remove the "review" option to generate the final version.
+\usepackage[]{acl}
+\citestyle{numeric}
+
+% Standard package includes
+\usepackage{times}
+\usepackage{latexsym}
+\usepackage{graphicx}
+\usepackage{hyperref}
+
+% For proper rendering and hyphenation of words containing Latin characters (including in bib files)
+\usepackage[T1]{fontenc}
+% For Vietnamese characters
+% \usepackage[T5]{fontenc}
+% See https://www.latex-project.org/help/documentation/encguide.pdf for other character sets
+
+% This assumes your files are encoded as UTF8
+\usepackage[utf8]{inputenc}
+
+% This is not strictly necessary, and may be commented out,
+% but it will improve the layout of the manuscript,
+% and will typically save some space.
+\usepackage{microtype}
+
+% If the title and author information does not fit in the area allocated, uncomment the following
+%
+%\setlength\titlebox{<dim>}
+%
+% and set <dim> to something 5cm or larger.
+
+\title{Math Tutor Agent - Trustyworthy Step-by-Step Problem Solving}
+
+% Author information can be set in various styles:
+% For several authors from the same institution:
+% \author{Author 1 \and ... \and Author n \\
+%         Address line \\ ... \\ Address line}
+% if the names do not fit well on one line use
+%         Author 1 \\ {\bf Author 2} \\ ... \\ {\bf Author n} \\
+% For authors from different institutions:
+% \author{Author 1 \\ Address line \\  ... \\ Address line
+%         \And  ... \And
+%         Author n \\ Address line \\ ... \\ Address line}
+% To start a seperate ``row'' of authors use \AND, as in
+% \author{Author 1 \\ Address line \\  ... \\ Address line
+%         \AND
+%         Author 2 \\ Address line \\ ... \\ Address line \And
+%         Author 3 \\ Address line \\ ... \\ Address line}
+
+\author{Hugo Lin \\
+  Department of Statistics \\
+  \texttt{lifanlin@stanford.edu} \\\And
+  David Lyu \\
+  Department of Statistics  \\  
+  \texttt{dlyu@stanford.edu}
+}
+
+\begin{document}
+\maketitle
+% \begin{abstract}
+% Brief statement providing context for your ideas, and then a high-level summary of what you did and its significance. This is a required section.
+% \end{abstract}
+
+%\section{Instruction from Staff}
+
+%This template uses the ACL 2022 style files. 
+
+%The numbered section headings are merely suggestions. The two un-numbered sections at the end are required, as is a references section. 
+
+%The maximum length of the paper is 3 pages, excluding the two required un-numbered sections, references, and appendices. There is no length limit for these additional sections. Appendices cannot report on core findings of the paper.
+
+\section{Introduction}
+
+%We build and evaluate the trustworthiness of a multi-agent mathematical problem-solving system called ShuTong. ShuTong is able to generate accurate and detailed step-by-step solution given any mathematical problem, with the intention that students can learn the correct reasoning pattern and internalize mathematical knowledge. 
+
+We build and evaluate the trustworthiness of a multi-agent mathematical problem-solving system called {\it ShuTong}\footnote{ShuTong takes its name from literary Chinese, meaning personal learning assistant. A video playback demo of ShuTong is included \href{https://docs.google.com/presentation/d/1U93PqhclGf0bxCYJMK2JjSP9FyKW_UIezsHAKg29kZg/edit?usp=sharing}{here [link]}. Our code can also be made available upon request.}. While contemporary language models demonstrate strong performance in solving mathematical problems, their solutions often lack clarity and pedagogical value. Solutions may also benefit from additional checking, as undetected errors could lead students to internalize incorrect mathematical reasoning patterns, undermining their foundational understanding. Reasoning models, though powerful, present two limitations: they are computationally expensive to deploy at scale, and their final answers tend to be too succinct for effective learning.
+
+ShuTong addresses these challenges through an agentic design using non-reasoning models. Rather than relying on a single model's reasoning capabilities, our multi-agent system generates detailed step-by-step solutions that break down complex problems into comprehensible stages. Each solution is enriched with relevant knowledge points and mathematical concepts, enabling students to not only follow the solution, but also understand the underlying principles. This approach provides the pedagogical depth mimicking the solutions provided in office hours while maintaining computational efficiency.
+
+Towards establishing trustworthiness, our evaluation method focuses on assessing whether ShuTong's agentic approach can deliver both mathematical accuracy and trustworthy explanations that support genuine learning, helping students internalize correct reasoning patterns and mathematical knowledge.
+
+\section{Method: Agentic System Architecture}
+
+ShuTong is consisted of two main agents: a solver agent and a critic agent. Our solver agent is desigend to generate step-by-step solutions to mathematical problems using intelligence-fist base model for creative problem-solving.
+
+The critique agent is designed with more sophistication and evaluates each solution step for correctness. The critique agent has access to four SymPy-based (\texttt{sympy.org}) calculator tools: (1) \texttt{evaluate\_numerical}: Numerical evaluation with variable substitution; (2) \texttt{evaluate\_symbolic}: Symbolic algebraic simplification, (3) \texttt{verify\_calculation}: Check if an expression equals an expected result; (4) \texttt{compare\_expressions}: Test mathematical equivalence of two expressions. We create this four tools and adapt them for LaTeX format. 
+
+The critique agent implements a 3-node LangGraph workflow that allows up to K rounds of tool calling per step to verify calculations before generating its critique. The entire agentic system can iteratively refine solutions based on critic feedback, though for evaluation purposes we use only the initial critique (no refinement). Our architecture is illustrated in Figure~\ref{fig:architecture}.
+\begin{figure}
+    \centering
+    \includegraphics[width=1\linewidth]{shutongArchitecture.png}
+    \caption{ShuTong Agentic System Architecture}
+    \label{fig:architecture}
+\end{figure}
+
+During the construction of the agent pipeline, we incorporated several standard practices to improve both efficiency and reliability. For example, we implemented dedicated and diverse fallback strategies to robustly interpret the structured outputs produced by LLMs, ensuring graceful recovery from format deviations or partial failures. We also introduced context-management mechanisms, including rolling context windows and staged reasoning flows, to maintain coherence across turns while controlling token usage. Together, these design choices strengthen our pipeline's stability, responsiveness, and overall execution quality.
+
+\section{Method: Evaluation Approach}
+
+For evaluation, we focus on assessing the critic agent's ability to detect the \emph{first} error in a solution sequence, a critical capability for educational applications where early error detection prevents cascading mistakes and helps students understand where their reasoning diverged from correctness. Our evaluation uses the ProcessBench dataset \citep{processbench}, which provides ground truth labels for error locations in multi-step mathematical solutions. 
+
+It is important to note that our overall agentic system performance depends on the critique agent. If the critic agent is performing very well, the solution generated by the solver agent must be correct as deciding overall correctness is an important part of the critique agent's ability. Hence, for the scope of the project, we think evaluation of the critique agent is thorough enough. 
+
+\section{Datasets}
+
+We evaluate our critic agent using ProcessBench \citep{processbench}, a dataset specifically designed for evaluating process-level supervision in mathematical reasoning. The dataset is available through Hugging Face (\texttt{Qwen/ProcessBench}) and contains multi-step solutions to mathematical problems with ground truth labels indicating error locations.
+
+Each example in ProcessBench contains:
+\begin{itemize}
+    \item \textbf{Problem}: The original mathematical question
+    \item \textbf{Steps}: A list of solution steps (typically 3-9 steps)
+    \item \textbf{Label}: Ground truth error location (0-indexed step number, or -1 for no error cases)
+    \item \textbf{Generator}: The model that generated the solution (e.g., Qwen2-7B-Instruct)
+    \item \textbf{Final Answer Correctness}: Boolean indicating if the final answer is correct
+\end{itemize}
+
+We specifically use the \texttt{math} split of the dataset, which focuses on mathematical reasoning problems from Math Olympiad competition problems. \citep{math-dataset} % add more about MATH dataset
+
+The ProcessBench Dataset has some unique characteristics and therefore presents some unique challenges. ProcessBench solutions are generated by various models and exhibit diverse formatting styles. Steps may contain LaTeX notation, delimiters, natural language explanations, and computational results, all interleaved in different ways. Our critic agent must parse and understand solutions regardless of format. Furthermore, errors in the dataset span multiple categories, including: \emph{Logical errors} where there exist incorrect reasoning steps (e.g., invalid algebraic manipulation), \emph{Computational errors} where arithmetic mistakes or calculation errors are present, and  \emph{Conceptual errors} where the solution contains misapplication of mathematical concepts. 
+
+We carefully select random subsample of the evaluation dataset so that the  portion of examples where the solution is entirely correct balances with the examples where there are errors. Also, it is worth noting that the dataset labels only the \emph{first} error in each solution. Subsequent steps may contain additional errors, but these are not annotated. This adds additional challenge to our critic agent's ability as we need to specifically identify where a solution first deviates from correctness.
+
+\section{Metrics}
+
+We evaluate model performance along three complementary axes, each capturing a different aspect of an agent’s ability to judge mathematical solutions and identify reasoning errors.
+
+\begin{enumerate}
+\item \textbf{Correctness Judgment (Correct Match).}
+A prediction is counted as correct if the model’s binary judgment (correct / incorrect) matches the ground-truth label. This reflects the model’s high-level ability to evaluate overall solution validity without requiring step-level localization.
+\item \textbf{Error Localization (Exact Match).}  
+Under this setting, a prediction is considered correct only if the identified error step \emph{exactly} matches the ground truth. If no error exists, the model must correctly identify the entire solution as valid. Exact Match captures fine-grained reasoning-trace analysis.
+
+\item \textbf{Cost Efficiency.}  
+Since our agent pipeline aims to achieve higher evaluation quality by coordinating weaker and more cost-efficient models, we quantify evaluation cost in U.S. dollars based on the official OpenAI pricing page.  
+We report the average pricing of each correct prediction: (1) cost per Exact Match, and (2) cost per Correct Match. 
+
+\end{enumerate}
+
+
+
+
+%\section{Methods}
+
+%I think the methods are already explained in architecture / evaluation approach
+
+\section{Results}
+Table~\ref{tbl:main_result} summarizes the performance of multiple models used as the base evaluator within our agent pipeline. We benchmark GPT-5 nano, GPT-5 mini, and GPT-4o-mini, and compare them against a single-call baseline using the GPT-5.1 reasoning model. Results are reported across the three evaluation axes introduced above.
+
+Overall, GPT-5 mini achieves the strongest performance within the agent framework, substantially outperforming GPT-4o-mini and GPT-5 nano on both Exact Match and Correct Match while remaining cost-efficient. The GPT-5.1 reasoning model performs strongly as well, but at a higher marginal token cost.
+\begin{table}[h]
+\centering
+\small
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.25}
+\caption{Experiment Results Across Models}
+\label{tbl:main_result}
+\begin{tabular}{lccc|c}
+\hline
+\textbf{Metric} & 
+\textbf{4o-mini} & 
+\textbf{5-nano} & 
+\textbf{5-mini} & 
+\textbf{5.1 (Reason.)} \\
+\hline
+\multicolumn{5}{l}{\textbf{1. Exact Match(\%)}} \\
+Overall Acc.      & 39.6 & 42.5 & 82.1 & 68.2 \\
+Acc. (Correct)   & 33.0 & 33.7 & 80.0 & 66.2 \\
+Acc. (Incorrect)   & 49.3 & 55.4 & 85.2 & 79.7 \\
+\hline
+\multicolumn{5}{l}{\textbf{2. Correct Match(\%)}} \\
+Accuracy              & 68.7 & 71.4 & 93.6 & 92.8 \\
+Precision             & 70.3 & 73.0 & 90.8 & 96.4 \\
+Recall                & 82.0 & 82.3 & 99.3 & 95.1 \\
+F1 Score              & 75.7 & 77.4 & 94.9 & 95.7 \\
+\hline
+\multicolumn{5}{l}{\textbf{3. Cost Efficiency (USD/unit)}} \\
+Exact Match    & 0.0049 & 0.0019 & 0.0093 & 0.0098 \\
+Correct Match  & 0.0028 & 0.0011 & 0.0082 & 0.0072 \\
+\hline
+\end{tabular}
+\end{table}
+\section{Analysis}
+
+Results from Table \ref{tbl:main_result} indicate that GPT-5 mini is the strongest performer within our agentic framework, achieving 82.1\% exact match accuracy, nearly double that of GPT-4o-mini (39.6\%) and GPT-5 nano (42.5\%). This performance gap demonstrates that model capability remains one of the primary drivers of evaluation quality, even with tool augmentation.
+
+The breakdown between positive and negative cases illuminates an interesting pattern. All models show higher accuracy on negative cases (correct solutions with no errors) than positive cases (solutions containing errors), suggesting identifying the absence of errors is easier than pinpointing the location of errors, consistent with the inherent difficulty of fine-grained error localization in multi-step reasoning. We also observe that all models perform substantially better at higher-level correctness judgment than precise error localization. %For instance, GPT-4o-mini achieves 68.7\% on Correct Match but only 39.6\% on Exact Match, indicating that while the critic can often detect \emph{that} an error exists, it struggles to identify the \emph{exact step} where reasoning first diverges from correctness. This gap is smallest for GPT-5 mini (93.6\% vs 82.1\%), suggesting that stronger models better handle the nuanced task of step-level analysis.
+
+The cost efficiency analysis reveals important tradeoffs. While GPT-5 mini and GPT-5.1 Reasoning have higher correct match percentage, GPT-5 nano has the lowest cost per match (\$0.0019 per exact match, \$0.0011 per correct match) with some accuracy limitations. In a less risky setting, through tool enabling and agentic design, we are able to achieve relatively good accuracy. A case comparison between 5 mini and 5.1 reasoning on the Exact Match percentage is also intriguing:  our agentic design with GPT-5 mini outperforms the reasoning model substantially on exact match while maintaining similar cost efficiency, pointing to the value of agentic design. 
+
+Our findings validate a hypothesis that an agentic design using non-reasoning models with tool augmentation can achieve strong evaluation performance while maintaining cost efficiency. However, the results also reveal that fundamental model capability remains crucial: calculator tools and workflow design enhance but cannot fully compensate for weaker base models.
+
+\section{Discussion}
+
+Qualitative analysis of prediction errors reveals that the critic agent sometimes identifies the manifestation of an error rather than its root cause, particularly when early conceptual mistakes propagate through subsequent valid steps. We also observed challenges with densely-formatted solutions containing minimal natural language explanations, where the critic has fewer semantic cues to assess logical flow. We believe future work can complement our evaluation with inter-rater reliability studies involving real human educators, to better understand when error attribution is genuinely ambiguous vs. reflective of model limitations.
+
+\newpage
+
+
+\section*{Known Project Limitations}
+
+One limitation with our evaluation is our focus exclusively on the ProcessBench dataset, which contains solutions generated by specific language models and may not fully represent the diversity of student reasoning patterns in real educational settings. The ProcessBench dataset labels only the first error in each solution sequence. When our critic identifies an error at a different location than the ground truth, this may occasionally reflect genuine ambiguity in error attribution (e.g., when an error in step 2 stems from a subtle mistake in step 1) rather than pure model failure. Our exact match metric treats such cases as incorrect, which may slightly underestimate true performance.
+
+We evaluate only the critic agent's ability to detect the first error in a given solution, rather than assessing the complete solver-critic pipeline's end-to-end performance on original problem-solving tasks due to time constraints. This means our results speak to the trustworthiness of the evaluation component, and only as a proxy to the complete system's ability to generate trustworthy solutions from scratch. We argue that with a good enough critique agent, the final output of the agentic system might will be trustworthy since any errors the solver agent might commit will be corrected in the iterations. 
+
+Finally, our cost calculations are based on current OpenAI API pricing and token usage patterns observed during our evaluation. Real-world deployment costs will vary based on problem complexity, solution length, and future pricing changes. We have not extensively explored different agent configurations, temperature settings, or prompt engineering strategies that might improve performance or cost efficiency. 
+
+\section*{Authorship Statement}
+
+%Hugo and David collectively proposed the project. Hugo built the agentic pipeline. David conducted the evaluations. Hugo and David collectively wrote the paper. 
+
+Hugo and David collectively proposed the project idea. Hugo designed and implemented the agentic pipeline architecture, including the LangGraph workflow and SymPy tool integration. David designed the evaluation, conducted experiments on ProcessBench, and performed the statistical analysis. We contributed equally to writing the paper, with Hugo focusing on the Methods sections and David on Analysis and Discussion sections. This project was developed exclusively for CS329T, Autumn 2025 and does not overlap with work from other courses or external collaborations.
+
+\begin{thebibliography}{2}
+
+\bibitem{processbench}
+Qwen Team.
+\textit{ProcessBench: A Benchmark for Process-Level Supervision in Mathematical Reasoning}.
+Hugging Face Datasets, 2024.
+%\texttt{https://huggingface.co/datasets/Qwen/ProcessBench}
+
+\bibitem{math-dataset}
+Hendrycks, D., Burns, C., Kadavath, S., et al.
+\textit{Measuring Mathematical Problem Solving With the MATH Dataset}.
+NeurIPS Datasets and Benchmarks Track, 2021.
+
+\end{thebibliography}
+
+
+\appendix
+
+\section{Thank you for the Feedback!}\label{sec:appendix}
+
+From the poster/demo session, we have received very valuable feedback from our peers and the instructor team.
+
+(1) Prof. Candace Thille suggested using the critic agent as an autograder. When we initially proposed the project, we thought about building an autograder to compare the student solution. The critic agent may stash its critics into forming a learning profile for the student, such as ``you are constantly forgetting about adding that constant after you do indefinite integration, '' ``you are mixing up the concept of independence and the concept of mutual exclusion,'' etc. Thanks to this feedback, we think we can utilize the potential of our critic agent better. (2) Prof. John Mitchell suggested adding a ``distress button'' so that students can iteratively learn from a step in the solution. Both feedback (1) and (2) aims to create a learning experience that more closely mimics the experiences we would have in an office hour with a real human tutor. 
+
+From the poster presentation, Professor Anupam Datta suggested we include the cost-effectiveness comparison to illustrate the contrast with reasoning models, and we were able to achieve better cost efficiency by our agentic design. As discussed in the Analysis section, real users face the tradeoffs from selecting a model with higher cost-per-match (to achieve high accuracy) against selecting a model with lower cost-per-match while sacrificing some degrees of accuracy. 
+
+We thank the instructors and the course staff for their insightful feedback, and for the engaging discussions throughout the quarter. Please check out our \href{https://docs.google.com/presentation/d/1U93PqhclGf0bxCYJMK2JjSP9FyKW_UIezsHAKg29kZg/edit?usp=sharing}{demo} and always feel free to reach out to us if you have any questions or suggestions.
+
+%\section{Data Example}\label{sec:appendix_example}
+
+
+
+
+\end{document}
