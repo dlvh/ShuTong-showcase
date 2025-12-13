@@ -57,9 +57,9 @@ We evaluated performance along three complementary axes:
 
 | Model | Exact Match | Correct Match | Cost per Correct Match |
 |-------|-------------|---------------|------------------------|
-| **GPT-5 mini (Ours)** | **82.1%** | **93.6%** | **$0.0082** |
+| GPT-5 mini | **82.1%** | **93.6%** | $0.0082 |
 | GPT-5.1 Reasoning | 68.2% | 92.8% | $0.0072 |
-| GPT-5 nano | 42.5% | 71.4% | $0.0011 |
+| GPT-5 nano | 42.5% | 71.4% | **$0.0011** |
 | GPT-4o-mini | 39.6% | 68.7% | $0.0028 |
 
 **Key Finding**: Our agentic design with GPT-5 mini substantially outperforms the GPT-5.1 reasoning model on exact match accuracy (82.1% vs 68.2%) while maintaining similar cost efficiency. This demonstrates that **tool augmentation and agentic design can achieve superior performance compared to reasoning models alone**.
